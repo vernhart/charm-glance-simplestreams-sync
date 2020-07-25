@@ -226,6 +226,21 @@ def set_openstack_env(id_conf, charm_conf):
         os.environ['OS_TENANT_NAME'] = id_conf['admin_tenant_name']
 
 
+def set_proxy_env():
+    # Grab the JUJU_CHARM*PROXY variables from the juju-run environment.
+    # JUJU_CHARM_FTP_PROXY
+    # JUJU_CHARM_HTTPS_PROXY
+    # JUJU_CHARM_HTTP_PROXY
+    # JUJU_CHARM_NO_PROXY
+    # Note that this does not expand cidr or wilecards in no_proxy.
+    for pair in juju_run_cmd(["env"]).split():
+        if pair.startswith("JUJU_CHARM_") and "PROXY=" in pair:
+            (var, val) = pair.split('=', 1)
+            if val not in (None, ""):
+                # use the lowercased string without JUJU_CHARM_
+                os.environ[var.partition("JUJU_CHARM_")[2].lower()] = val
+
+
 def do_sync(charm_conf):
 
     # NOTE(beisner): the user_agent variable was an unused assignment (lint).
@@ -401,6 +416,7 @@ def main():
     id_conf, charm_conf = get_conf()
 
     set_openstack_env(id_conf, charm_conf)
+    set_proxy_env()
 
     ksc = get_keystone_client(id_conf['api_version'])
     services = [s._info for s in ksc.services.list()]
